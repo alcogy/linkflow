@@ -13,7 +13,8 @@
   },
   "scripts": {
     "build": "tsup",
-    "test": "jest"
+    "test": "jest",
+    "dev": "tsup --watch & bun run dev-server.ts"
   },
   "keywords": [
     "ui-library",
