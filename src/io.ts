@@ -75,8 +75,8 @@ export class IO {
     
     const rect = gate.getBoundingClientRect();
     const start = {
-      top: rect.top - States.offset.top + window.scrollY + (rect.height / 2),
-      left: rect.left - States.offset.left + window.scrollX - (rect.width / 2),
+      top: (rect.top - States.offset.top + window.scrollY + rect.height / 2) / States.zoom,
+      left: (rect.left - States.offset.left + window.scrollX - rect.width / 2) / States.zoom,
     }
     States.connecting = new Connecting(this, start);
     States.selectedIO.from = this;

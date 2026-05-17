@@ -26,6 +26,8 @@ export interface IOprops {
 
 interface GlobalModel {
   container: HTMLElement | null;
+  canvas: HTMLElement | null;
+  zoom: number;
   selectedNode: Node | null;
   holdingNode: Node | null;
   editingNode: Node | null;
@@ -44,6 +46,8 @@ interface GlobalModel {
 
 export const States: GlobalModel = {
   container: null,
+  canvas: null,
+  zoom: 1,
   selectedNode: null,
   holdingNode: null,
   editingNode: null,

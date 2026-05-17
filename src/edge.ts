@@ -88,13 +88,13 @@ export default class Edge {
     
     const fromRect = this.from.gate.getBoundingClientRect();
     const start = {
-      top: fromRect.top - States.offset.top + window.scrollY + (fromRect.height / 2),
-      left: fromRect.left - States.offset.left + window.scrollX,
+      top: (fromRect.top - States.offset.top + window.scrollY + fromRect.height / 2) / States.zoom,
+      left: (fromRect.left - States.offset.left + window.scrollX) / States.zoom,
     }
     const endRect = this.to.gate.getBoundingClientRect();
     const end = {
-      top: endRect.top - States.offset.top + window.scrollY + (endRect.height / 2),
-      left: endRect.left - States.offset.left + window.scrollX,
+      top: (endRect.top - States.offset.top + window.scrollY + endRect.height / 2) / States.zoom,
+      left: (endRect.left - States.offset.left + window.scrollX) / States.zoom,
     }
     return [start, end];
   }
@@ -121,15 +121,15 @@ export class Connecting {
     svg.id = 'drawing';
     svg.appendChild(path);
 
-    if (States.container !== null) {
-      States.container.appendChild(svg);
+    if (States.canvas !== null) {
+      States.canvas.appendChild(svg);
     }
   }
 
   move(x: number, y: number) {
     const end = {
-      top: y - States.offset.top  + window.scrollY,
-      left: x - States.offset.left + window.scrollX,
+      top: (y - States.offset.top + window.scrollY) / States.zoom,
+      left: (x - States.offset.left + window.scrollX) / States.zoom,
     }
     const path = this.calcWirePath(this.from, end);
     this.path.setAttribute('d', path);

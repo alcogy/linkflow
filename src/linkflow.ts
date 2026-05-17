@@ -13,9 +13,10 @@ export class Linkflow {
     if (States.container === null) return;
     States.container.classList.add('linkflow');
     States.container.addEventListener('mousedown', (e: MouseEvent) => this.onMouseDown(e));
+    States.container.addEventListener('wheel', (e: WheelEvent) => this.onWheel(e), { passive: false });
     States.offset.top = States.container.getBoundingClientRect()['top'];
     States.offset.left = States.container.getBoundingClientRect()['left'];
-    
+
     window.addEventListener('mousemove', (e: MouseEvent) => this.onMouseMove(e));
     window.addEventListener('mouseup', (e: MouseEvent) => this.onMouseUp(e));
     window.addEventListener('keyup', (e: KeyboardEvent) => this.onKeyUp(e));
@@ -23,7 +24,11 @@ export class Linkflow {
     const style = document.createElement('style');
     style.textContent = styling;
     document.head.appendChild(style);
-    
+
+    const canvas = document.createElement('div');
+    canvas.classList.add('lf-canvas');
+    States.canvas = canvas;
+    States.container.appendChild(canvas);
     States.container.appendChild(this.panel.render());
   }
 
@@ -38,8 +43,8 @@ export class Linkflow {
   }
 
   mount(dom: HTMLElement) {
-    if (States.container !== null) {
-      States.container.appendChild(dom);
+    if (States.canvas !== null) {
+      States.canvas.appendChild(dom);
     }
   }
 
@@ -61,8 +66,8 @@ export class Linkflow {
 
   private onMouseMove(e: MouseEvent) {
     const diff = {
-      x: e.clientX - States.mouse.x,
-      y: e.clientY - States.mouse.y,
+      x: (e.clientX - States.mouse.x) / States.zoom,
+      y: (e.clientY - States.mouse.y) / States.zoom,
     }
     if (States.holdingNode) {
       // Moving node
@@ -160,8 +165,17 @@ export class Linkflow {
     States.edges.push(edge);
     const svg = edge.render();
 
-    if (States.container !== null) {
-      States.container.appendChild(svg);
+    if (States.canvas !== null) {
+      States.canvas.appendChild(svg);
+    }
+  }
+
+  private onWheel(e: WheelEvent) {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    States.zoom = Math.min(Math.max(States.zoom * factor, 0.1), 3.0);
+    if (States.canvas) {
+      States.canvas.style.transform = `scale(${States.zoom})`;
     }
   }
 
@@ -252,8 +266,8 @@ export class Linkflow {
 
       const edge = new Edge(fromIO, toIO);
       States.edges.push(edge);
-      if (States.container !== null) {
-        States.container.appendChild(edge.render());
+      if (States.canvas !== null) {
+        States.canvas.appendChild(edge.render());
       }
     }
   }

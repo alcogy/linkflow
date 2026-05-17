@@ -19,7 +19,19 @@ export const styling = `
 }
 
 /********************
-*       node 
+*      canvas
+*********************/
+.linkflow .lf-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+}
+
+/********************
+*       node
 *********************/
 .linkflow div.node {
   background-color: #101010;
