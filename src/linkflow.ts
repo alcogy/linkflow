@@ -1,4 +1,4 @@
-import { NodeProps, States } from './utils';
+import { NodeProps, States, SerializedGraph } from './utils';
 import Edge from './edge';
 import Node from './node';
 import { Output } from './io';
@@ -52,6 +52,10 @@ export class Linkflow {
     for (const sel of selected) {
       sel.classList.remove('selected');
     }
+    if (States.selectedEdge) {
+      States.selectedEdge.deselect();
+      States.selectedEdge = null;
+    }
     this.panel.reset();
   }
 
@@ -69,16 +73,13 @@ export class Linkflow {
       }
       
     } else if (States.connecting) {
-      // Remove curren connection
-      for (const edge of States.edges) {
-        if (edge.from.id === States.connecting.io.id || edge.to.id === States.connecting.io.id) {
-          if (edge.from.type === 'output') (edge.from as Output).setConnect(null);
-          if (edge.to.type === 'output') (edge.to as Output).setConnect(null);
-          edge.remove();
-          edge.to.update(null);
-          States.edges = States.edges.filter((v) => v !== edge);
-
-          break;
+      // Re-route only when dragging from an input that already has a connection
+      if (States.connecting.io.type === 'input') {
+        for (const edge of States.edges) {
+          if (edge.from.id === States.connecting.io.id || edge.to.id === States.connecting.io.id) {
+            this.removeEdge(edge);
+            break;
+          }
         }
       }
       States.connecting.move(e.clientX, e.clientY);
@@ -109,18 +110,19 @@ export class Linkflow {
   private onKeyUp(e: KeyboardEvent) {
     switch (e.key) {
       case 'Delete':
-        if (States.selectedNode === null) return;
-        const selectedId = States.selectedNode.id;
-        States.selectedNode.remove();
-        States.nodes = States.nodes.filter((v) => v.id !== selectedId);
-        for (const edge of States.edges) {
-          if (edge.includeNode(selectedId)) {
-            edge.remove();
-            edge.to.update(null);
+        if (States.selectedEdge !== null) {
+          this.removeEdge(States.selectedEdge);
+          States.selectedEdge = null;
+        } else if (States.selectedNode !== null) {
+          const selectedId = States.selectedNode.id;
+          States.selectedNode.remove();
+          States.nodes = States.nodes.filter((v) => v.id !== selectedId);
+          const edgesToRemove = States.edges.filter((v) => v.includeNode(selectedId));
+          for (const edge of edgesToRemove) {
+            this.removeEdge(edge);
           }
+          States.selectedNode = null;
         }
-        States.edges = States.edges.filter((v) => !v.includeNode(selectedId));
-        States.selectedNode = null;
         break;
       case 'Escape':
         const selected = document.querySelectorAll('div.node.selected');
@@ -139,25 +141,120 @@ export class Linkflow {
   private connect() {
     if (States.selectedIO.from === null || States.selectedIO.to === null) return;
     if (States.selectedIO.from.type === States.selectedIO.to.type) return;
+
+    // Input side must not already have a connection
+    const inputIO = States.selectedIO.from.type === 'input' ? States.selectedIO.from : States.selectedIO.to;
     for (const edge of States.edges) {
-      if (States.selectedIO.to.id === edge.from.id || States.selectedIO.to.id === edge.to.id ) return;
+      if (inputIO.id === edge.from.id || inputIO.id === edge.to.id) return;
     }
-    // Set connecttion on IO.
+
     if (States.selectedIO.from.type === 'output') {
-      (States.selectedIO.from as Output).setConnect(States.selectedIO.to);
+      (States.selectedIO.from as Output).addConnect(States.selectedIO.to);
       States.selectedIO.to.update(States.selectedIO.from.value);
     } else {
-      (States.selectedIO.to as Output).setConnect(States.selectedIO.from);
+      (States.selectedIO.to as Output).addConnect(States.selectedIO.from);
       States.selectedIO.from.update(States.selectedIO.to.value);
     }
 
-    // create edge
     const edge = new Edge(States.selectedIO.from, States.selectedIO.to);
     States.edges.push(edge);
     const svg = edge.render();
 
     if (States.container !== null) {
       States.container.appendChild(svg);
+    }
+  }
+
+  private removeEdge(edge: Edge) {
+    const outputIO = edge.from.type === 'output' ? edge.from as Output : edge.to as Output;
+    const inputIO = edge.from.type === 'input' ? edge.from : edge.to;
+    outputIO.removeConnect(inputIO);
+    inputIO.update(null);
+    edge.remove();
+    States.edges = States.edges.filter(v => v !== edge);
+  }
+
+  serialize(): SerializedGraph {
+    return {
+      nodes: States.nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        left: node.left,
+        top: node.top,
+        props: {
+          label: node.props.label,
+          ios: node.props.ios.map(io => ({
+            type: io.io.type,
+            value: io.value,
+            label: io.label,
+          })),
+        },
+      })),
+      edges: States.edges.flatMap(edge => {
+        const fromNode = States.nodes.find(n => n.id === edge.from.nodeId);
+        const toNode = States.nodes.find(n => n.id === edge.to.nodeId);
+        if (!fromNode || !toNode) return [];
+        const fromIoIndex = fromNode.props.ios.findIndex(io => io.io.id === edge.from.id);
+        const toIoIndex = toNode.props.ios.findIndex(io => io.io.id === edge.to.id);
+        if (fromIoIndex === -1 || toIoIndex === -1) return [];
+        return [{ fromNodeId: fromNode.id, fromIoIndex, toNodeId: toNode.id, toIoIndex }];
+      }),
+    };
+  }
+
+  deserialize(graph: SerializedGraph, factory: (type: string) => Node) {
+    for (const node of States.nodes) node.remove();
+    for (const edge of States.edges) edge.remove();
+    States.nodes = [];
+    States.edges = [];
+    States.selectedNode = null;
+    States.selectedEdge = null;
+    States.holdingNode = null;
+    States.editingNode = null;
+    this.panel.reset();
+
+    const nodeMap = new Map<string, Node>();
+
+    for (const nodeData of graph.nodes) {
+      const node = factory(nodeData.type);
+      node.left = nodeData.left;
+      node.top = nodeData.top;
+      this.addNode(node);
+
+      const restoredProps: NodeProps = {
+        label: nodeData.props.label,
+        ios: node.props.ios.map((ioProp, i) => ({
+          io: ioProp.io,
+          value: nodeData.props.ios[i]?.value ?? ioProp.value,
+          label: nodeData.props.ios[i]?.label ?? ioProp.label,
+        })),
+      };
+      node.update(restoredProps);
+      nodeMap.set(nodeData.id, node);
+    }
+
+    for (const edgeData of graph.edges) {
+      const fromNode = nodeMap.get(edgeData.fromNodeId);
+      const toNode = nodeMap.get(edgeData.toNodeId);
+      if (!fromNode || !toNode) continue;
+
+      const fromIO = fromNode.props.ios[edgeData.fromIoIndex]?.io;
+      const toIO = toNode.props.ios[edgeData.toIoIndex]?.io;
+      if (!fromIO || !toIO) continue;
+
+      if (fromIO.type === 'output') {
+        (fromIO as Output).addConnect(toIO);
+        toIO.update(fromIO.value);
+      } else {
+        (toIO as Output).addConnect(fromIO);
+        fromIO.update(toIO.value);
+      }
+
+      const edge = new Edge(fromIO, toIO);
+      States.edges.push(edge);
+      if (States.container !== null) {
+        States.container.appendChild(edge.render());
+      }
     }
   }
   

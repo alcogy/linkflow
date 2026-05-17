@@ -3,6 +3,7 @@ import { Output } from './io';
 
 export default class Node {
   id: string;
+  type: string = 'Node';
   left: number;
   top: number;
   element: HTMLElement | null = null;

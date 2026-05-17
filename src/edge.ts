@@ -6,6 +6,7 @@ export default class Edge {
   from: IO;
   to: IO;
   path: SVGPathElement | null = null;
+  hitPath: SVGPathElement | null = null;
   element: SVGElement | null = null;
 
   constructor(from: IO, to: IO) {
@@ -15,15 +16,30 @@ export default class Edge {
   }
 
   render() {
+    const d = this.calcWirePath();
+
+    const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitPath.setAttribute('stroke', 'transparent');
+    hitPath.setAttribute('fill', 'none');
+    hitPath.setAttribute('stroke-width', '12');
+    hitPath.setAttribute('d', d);
+    hitPath.style.cursor = 'pointer';
+    hitPath.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.select();
+    });
+    this.hitPath = hitPath;
+
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.id = this.id;
     path.setAttribute('stroke', 'gray');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke-width', '2');
-    path.setAttribute('d', this.calcWirePath());
+    path.setAttribute('d', d);
     this.path = path;
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.appendChild(hitPath);
     svg.appendChild(path);
     this.element = svg;
 
@@ -32,12 +48,24 @@ export default class Edge {
 
   move() {
     if (this.path === null) return;
-    this.path.setAttribute('d', this.calcWirePath());
+    const d = this.calcWirePath();
+    this.path.setAttribute('d', d);
+    this.hitPath?.setAttribute('d', d);
   }
 
   remove() {
     if (this.element === null) return;
     this.element.remove();
+  }
+
+  select() {
+    States.selectedEdge?.deselect();
+    States.selectedEdge = this;
+    this.path?.setAttribute('stroke', '#ff6b6b');
+  }
+
+  deselect() {
+    this.path?.setAttribute('stroke', 'gray');
   }
 
   includeNode(nodeId: string): boolean {

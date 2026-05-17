@@ -109,25 +109,33 @@ export class Input extends IO {
 }
 
 export class Output extends IO {
-  connectTo: IO | null;
+  connectTo: IO[];
 
   constructor(nodeId: string) {
     super(nodeId, '', 'output', 'output');
-    this.connectTo = null;
+    this.connectTo = [];
   }
 
-  setConnect(io: IO | null) {
-    this.connectTo = io;
+  addConnect(io: IO) {
+    if (!this.connectTo.includes(io)) {
+      this.connectTo.push(io);
+    }
+  }
+
+  removeConnect(io: IO) {
+    this.connectTo = this.connectTo.filter(c => c !== io);
   }
 
   update(v: any) {
     super.update(v);
-    if (this.connectTo === null) return;
-    this.connectTo.update(this.value);
-    for (const edge of States.edges) {
-      edge.move();
+    for (const io of this.connectTo) {
+      io.update(this.value);
+    }
+    if (this.connectTo.length > 0) {
+      for (const edge of States.edges) {
+        edge.move();
+      }
     }
   }
-  
 }
 

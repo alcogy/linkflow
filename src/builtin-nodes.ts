@@ -4,6 +4,7 @@ import Node from './node';
 export class NodeTextBox extends Node {
   constructor() {
     super();
+    this.type = 'NodeTextBox';
     this.props = {
       label: 'Textbox',
       ios: [
@@ -16,6 +17,7 @@ export class NodeTextBox extends Node {
 export class NodeDisplay extends Node {
   constructor() {
     super();
+    this.type = 'NodeDisplay';
     this.props = {
       label: 'Display',
       ios: [
@@ -35,6 +37,7 @@ export class NodeDisplay extends Node {
 export class NodeNumberBox extends Node {
   constructor() {
     super();
+    this.type = 'NodeNumberBox';
     this.props = {
       label: 'Number',
       ios: [
@@ -46,9 +49,9 @@ export class NodeNumberBox extends Node {
 
 
 export class NodeCondition extends Node {
-  
   constructor() {
     super();
+    this.type = 'NodeCondition';
     this.props = {
       label: 'Condition',
       ios: [
@@ -78,9 +81,9 @@ export class NodeCondition extends Node {
 }
 
 export class NodeCalc extends Node {
-
   constructor() {
     super();
+    this.type = 'NodeCalc';
     this.props = {
       label: 'Calculation',
       ios: [

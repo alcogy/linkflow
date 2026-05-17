@@ -29,6 +29,7 @@ interface GlobalModel {
   selectedNode: Node | null;
   holdingNode: Node | null;
   editingNode: Node | null;
+  selectedEdge: Edge | null;
   isHoldingContainer: boolean;
   selectedIO: {
     from: IO | null,
@@ -41,14 +42,12 @@ interface GlobalModel {
   edges: Edge[],
 }
 
-/**
- * State management in global.
- */
 export const States: GlobalModel = {
   container: null,
   selectedNode: null,
   holdingNode: null,
   editingNode: null,
+  selectedEdge: null,
   isHoldingContainer: false,
   selectedIO: {
     from: null,
@@ -65,6 +64,37 @@ export const States: GlobalModel = {
   },
   nodes: [],
   edges: [],
+}
+
+export interface SerializedIOProps {
+  type: IOType;
+  value: any;
+  label: string;
+}
+
+export interface SerializedNodeProps {
+  label: string;
+  ios: SerializedIOProps[];
+}
+
+export interface SerializedNode {
+  id: string;
+  type: string;
+  left: number;
+  top: number;
+  props: SerializedNodeProps;
+}
+
+export interface SerializedEdge {
+  fromNodeId: string;
+  fromIoIndex: number;
+  toNodeId: string;
+  toIoIndex: number;
+}
+
+export interface SerializedGraph {
+  nodes: SerializedNode[];
+  edges: SerializedEdge[];
 }
 
 /**
